@@ -1,0 +1,43 @@
+# VecSec — only what the traced path in stack.txt §2 needs.
+# Versions pinned to the parent repo's `ei` environment so numbers match.
+
+# Core
+numpy==2.4.6
+tqdm==4.70.0
+scipy==1.17.1            # LapMech/PurMech angular CDF (attacker/algen/defenses.py)
+
+# Encoders (models/)
+torch==2.11.0            # CUDA build; see the --index-url below
+transformers==5.15.1
+sentence-transformers==6.0.0
+sentencepiece==0.2.2     # T5-family tokenizers (GTR, flan-t5)
+
+# Corpora (dataloader/) — HF mirrors of BEIR, first download only
+datasets==5.0.1
+
+# ANN utility probe (ANN/) — HNSW/IVF indexes and codec round-trips
+faiss-cpu==1.15.0
+
+# Config
+PyYAML==6.0.3            # configs/*.yaml
+
+# Reconstruction scores (attacker/metrics.py)
+rouge_score==0.1.2
+sacrebleu==2.6.0
+
+# SPARSE's privacy concept C (defense/sparse.py::ConceptExtractor).
+# stack.txt §2 lists spaCy as NOT needed. That is WRONG for the default settings the
+# run scripts use: --sparse-concept-entity-types defaults to PERSON,ORG,GPE,DATE and
+# neither algen_quora.yaml nor algen_msmarco.yaml overrides it, so the S3 `sparse` fit
+# calls spaCy NER. The trace missed it because `import spacy` sits inside the
+# ConceptExtractor.nlp property (invisible to a module-scope AST import graph) and the
+# traced S3 run hit a cached checkpoint, so the property never evaluated.
+# Do NOT work around this with --sparse-concept-tokens: the concept is part of the
+# checkpoint stem, which is part of every later arm name (stack.txt §3 S3, §7.2).
+spacy==3.8.16
+# python -m spacy download en_core_web_sm    # or, pinned:
+en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+
+# Deliberately absent (stack.txt §2, verified by grep): pandas as a direct dependency
+# (only attacker/base.py::AttackResult.to_frame, unused here; it still arrives via
+# `datasets`), wandb (guarded, --wandb-run-name only), pytrec_eval, hnswlib.

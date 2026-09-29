@@ -1,0 +1,26 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+.python-version
+primer.md
+log.txt
+results.txt
+sparse.pdf
+
+# Corpora, cached embeddings, run manifests
+data/
+
+# Never commit credentialed clinical data
+mimic/
+*.csv
+
+# Attack checkpoints and attack outputs (attacker/)
+attacker/outputs/
+
+# Cached ladder arms, solved epsilons (metrics/) — run artifacts, same as above
+metrics/outputs/
+
+# Encoded ANN corpora (ANN/corpus.py) — 1.6 GB for Quora alone
+ANN/cache/
