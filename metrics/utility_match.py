@@ -62,7 +62,7 @@ NO_KNOB: dict[str, str] = {
     "shuffling": "a permutation has no magnitude.",
     "wet": "the circulant transform has no magnitude parameter.",
     "masking": "overwrites one coordinate; nothing to tune.",
-    "keyed_rotation": "structural: the rotation costs no recall by construction, and the "
+    "k_mosaic": "structural: the rotation costs no recall by construction, and the "
                       "security parameter is the cell count, set by --kr-m. Its utility "
                       "cost is the partition's, reported at --kr-nprobe.",
     "none": "no defense, no knob.",

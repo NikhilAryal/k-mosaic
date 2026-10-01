@@ -16,7 +16,7 @@ ATTACK_NAMES = ("algen", "steer", "teia", "zero2text")
 _ARM = re.compile(
     r"^(?:(?P<attack>" + "|".join(a for a in ATTACK_NAMES if a != "algen") + r")_)?"
     r"(?P<d>dp_gaussian|remote_rag|gaussian|lapmech|purmech|sparse|cmag|vec2text"
-    r"|eguard|idct|shuffling|wet|masking|keyed_rotation)"
+    r"|eguard|idct|shuffling|wet|masking|k_mosaic)"
     r"(?:_scope-(?P<scope>targets|both))?"
     r"(?:_(?P<kind>sigma|eps|lam|r)(?P<val>[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?))?"
 )
@@ -402,7 +402,7 @@ def main(argv: list[str] | None = None) -> int:
                   f"voronoi {pr['voronoi_agreement']:.3f}")
             print(f"  ceiling and floors: UNPARTITIONED index. !! ALGEN is not partition-aware"
                   f" -> leak_norm is an\n  UPPER BOUND on protection "
-                  f"(defense/keyed_rotation.py AMBIGUITIES['attacker_not_partition_aware']).")
+                  f"(defense/k_mosaic.py AMBIGUITIES['attacker_not_partition_aware']).")
     print()
 
     buckets = _buckets(args.attack_dataset, probe_tag(args) if ann else None)

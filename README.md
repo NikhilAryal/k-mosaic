@@ -8,7 +8,7 @@ partitioned index with a secret rotation per cell. Headline metric:
 - **Attacks:** ALGEN, STEER, TEIA, Zero2Text, plus the adaptive per-cell ALGEN
   (`algen-cellmap`) and its no-rotation control (`algen-cellmap-norot`).
 - **Defenses:** eguard, idct, gaussian, lapmech, sparse, cmag, vec2text, remote_rag,
-  plus keyed_rotation on the partitioned index.
+  plus k_mosaic on the partitioned index.
 - **Corpora:** Quora (523k docs) and MS MARCO (a uniform 1M subsample).
 - **Victim encoders:** gtr-base (default) and st5.
 
@@ -134,7 +134,8 @@ Each report table is also written as `compare_partition.json` next to its arms.
 
 ## Reproducibility
 
-- **Seeds:** 42 everywhere (configs, splits, defense fits, keyed-rotation key); targets
+- **Seeds:** 42 everywhere (configs, splits, defense fits, and the k_mosaic HMAC key `keyed-rotation-42`, kept from
+  VecSec so the rotations and folder hashes are unchanged); targets
   use seeds 1, 2, 3; the MS MARCO subsample uses `sample_seed=42`.
 - **Training is deterministic** given the same inputs.
 - **HNSW index builds are not deterministic:**, expect small differences in leak_norm (+- 0.01)

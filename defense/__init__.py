@@ -62,10 +62,10 @@ from .sparse import (
     sigma_from_mask,
 )
 
-from .keyed_rotation import (
-    # AMBIGUITIES as KEYED_ROTATION_AMBIGUITIES,
-    KeyedRotation,
-    KeyedRotationConfig,
+from .k_mosaic import (
+    # AMBIGUITIES as K_MOSAIC_AMBIGUITIES,
+    KMosaic,
+    KMosaicConfig,
     capped_assign,
     fit_partition,
     partition_metrics,
@@ -82,12 +82,12 @@ __all__ = [
     "MI_ESTIMATORS",
     "structure_preservation_loss",
     "multiple_negatives_ranking_loss",
-    "KeyedRotation",
-    "KeyedRotationConfig",
+    "KMosaic",
+    "KMosaicConfig",
     "fit_partition",
     "capped_assign",
     "partition_metrics",
-    "KEYED_ROTATION_AMBIGUITIES",
+    "K_MOSAIC_AMBIGUITIES",
     "Sparse",
     "SparseConfig",
     "ConceptExtractor",

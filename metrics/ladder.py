@@ -162,7 +162,7 @@ def arm_label(args: argparse.Namespace, defense: str) -> str:
 
     if defense in ("none", "", None):
         return "undefended"
-    if defense == "keyed_rotation":
+    if defense == "k_mosaic":
         return defense if getattr(args, "attack", "algen") == "algen" else (
             f"{args.attack}_{defense}_scope-{getattr(args, 'defense_scope', 'targets')}")
     parts = [defense]
@@ -192,7 +192,7 @@ def arm_label(args: argparse.Namespace, defense: str) -> str:
 def _defense_kwargs(args: argparse.Namespace, defense: str) -> dict[str, Any]:
     import train_algen as algen_pipeline
 
-    if defense in ("none", "", "keyed_rotation"):
+    if defense in ("none", "", "k_mosaic"):
         return {"defense": "none"}
     eps = knob_for(args, defense)
     v = algen_pipeline.vec2text_checkpoint_for(args)
@@ -306,8 +306,8 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     ann = args.match_metric == "ann"
-    if defense == "keyed_rotation" and not args.partition:
-        print("ladder: --defense keyed_rotation implies --partition")
+    if defense == "k_mosaic" and not args.partition:
+        print("ladder: --defense k_mosaic implies --partition")
         args.partition = True
     if args.partition and not ann:
         raise SystemExit("--partition is an index layout: it needs --match-metric ann")
@@ -337,7 +337,7 @@ def main(argv: list[str] | None = None) -> int:
                 if not aware:
                     print(f"Ladder:: !! {args.attack} is NOT partition-aware: it fits one "
                           f"map across every cell, so leak_norm here is an\n"
-                          f"Ladder:: !! UPPER BOUND on protection (defense/keyed_rotation.py ")
+                          f"Ladder:: !! UPPER BOUND on protection (defense/k_mosaic.py ")
                 elif cellmaps:
                     print(f"Ladder:: !! algen IS partition-aware (--algen-cell-maps): one "
                           f"map per cell, fit on that cell's leaked pairs\n"

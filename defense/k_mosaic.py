@@ -12,7 +12,7 @@ import torch
 
 
 @dataclass
-class KeyedRotationConfig:
+class KMosaicConfig:
 
     m: int = 1000                 
     alpha: float = 1.3            
@@ -31,7 +31,7 @@ def _normalise(X: np.ndarray) -> np.ndarray:
     return (X / np.maximum(np.linalg.norm(X, axis=1, keepdims=True), 1e-12)).astype(np.float32)
 
 
-def fit_partition(Z: np.ndarray, cfg: KeyedRotationConfig) -> list[np.ndarray]:
+def fit_partition(Z: np.ndarray, cfg: KMosaicConfig) -> list[np.ndarray]:
     import faiss
 
     rng = np.random.default_rng(cfg.seed)
@@ -132,7 +132,7 @@ def gini(sizes: np.ndarray) -> float:
 
 
 def partition_metrics(
-    labels: np.ndarray, n_cells: int, cfg: KeyedRotationConfig,
+    labels: np.ndarray, n_cells: int, cfg: KMosaicConfig,
     nearest: np.ndarray | None = None, dim: int | None = None,
 ) -> dict[str, Any]:
 
@@ -169,11 +169,11 @@ def _prf_generator(key: str, c: int) -> "np.random.Generator":
     return np.random.Generator(np.random.Philox(key=int.from_bytes(digest[:16], "little")))
 
 
-class KeyedRotation:
+class KMosaic:
     """A fitted partition plus its keys. ``protect`` stores ``R_c x`` in cell ``c``."""
 
-    def __init__(self, cfg: KeyedRotationConfig | None = None, device: str | None = None):
-        self.cfg = cfg or KeyedRotationConfig()
+    def __init__(self, cfg: KMosaicConfig | None = None, device: str | None = None):
+        self.cfg = cfg or KMosaicConfig()
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.centroids: np.ndarray | None = None      # (C, d), plaintext space
         self.labels: np.ndarray | None = None         # bulk assignment of the fit set
@@ -181,7 +181,7 @@ class KeyedRotation:
         self._cent_t: torch.Tensor | None = None
 
 
-    def fit(self, Z: np.ndarray) -> "KeyedRotation":
+    def fit(self, Z: np.ndarray) -> "KMosaic":
         Z = np.ascontiguousarray(Z, dtype=np.float32)
         if self.cfg.metric == "cosine":
             Z = _normalise(Z)
@@ -276,9 +276,9 @@ class KeyedRotation:
         return path
 
     @classmethod
-    def load(cls, path: str | Path, device: str | None = None) -> "KeyedRotation":
+    def load(cls, path: str | Path, device: str | None = None) -> "KMosaic":
         ck = torch.load(path, map_location="cpu", weights_only=False)
-        obj = cls(KeyedRotationConfig(**ck["cfg"]), device=device)
+        obj = cls(KMosaicConfig(**ck["cfg"]), device=device)
         obj.centroids, obj.labels = ck["centroids"], ck["labels"]
         return obj
 
@@ -291,8 +291,8 @@ def _selftest() -> bool:
     Z = np.concatenate([c + 0.25 * rng.standard_normal((n, d)).astype(np.float32)
                         for c, n in zip(centers, sizes)])
     Z = _normalise(Z)
-    cfg = KeyedRotationConfig(m=200, alpha=1.3, key="test")
-    kr = KeyedRotation(cfg, device="cpu").fit(Z)
+    cfg = KMosaicConfig(m=200, alpha=1.3, key="test")
+    kr = KMosaic(cfg, device="cpu").fit(Z)
     rep = kr.report()
     ok = True
 
@@ -312,9 +312,9 @@ def _selftest() -> bool:
     R = kr.rotation(3)
     check("R_c is orthogonal", torch.allclose(R @ R.T, torch.eye(d), atol=1e-5))
     check("R_c is a pure function of (key, c)",
-          torch.allclose(R, KeyedRotation(cfg, "cpu")._with(kr).rotation(3)))
+          torch.allclose(R, KMosaic(cfg, "cpu")._with(kr).rotation(3)))
     check("different cells, different keys", not torch.allclose(kr.rotation(3), kr.rotation(4)))
-    other = KeyedRotation(KeyedRotationConfig(m=200, key="other"), "cpu")._with(kr)
+    other = KMosaic(KMosaicConfig(m=200, key="other"), "cpu")._with(kr)
     check("different key, different R_c", not torch.allclose(other.rotation(3), R))
     X = torch.as_tensor(Z[:500])
     cells = kr.labels[:500]
@@ -328,12 +328,12 @@ def _selftest() -> bool:
     return ok
 
 
-def _with(self: KeyedRotation, fitted: KeyedRotation) -> KeyedRotation:
+def _with(self: KMosaic, fitted: KMosaic) -> KMosaic:
     self.centroids, self.labels = fitted.centroids, fitted.labels
     return self
 
 
-KeyedRotation._with = _with  
+KMosaic._with = _with  
 
 
 CALIB_PATH = Path(__file__).resolve().parents[1] / "metrics" / "outputs" / "cells_to_m.json"
@@ -343,17 +343,17 @@ def _calib_key(corpus: str, cells: int, alpha: float, branching: int) -> str:
     return f"{corpus}|C{int(cells)}|a{alpha:g}|b{int(branching)}"
 
 
-def _leaf_count(Z: np.ndarray, cfg: KeyedRotationConfig, m: int) -> int:
+def _leaf_count(Z: np.ndarray, cfg: KMosaicConfig, m: int) -> int:
     from dataclasses import replace
 
     return len(fit_partition(Z, replace(cfg, m=int(m))))
 
 
 def solve_m_for_cells(
-    Z: np.ndarray, target_cells: int, cfg: KeyedRotationConfig | None = None,
+    Z: np.ndarray, target_cells: int, cfg: KMosaicConfig | None = None,
     *, tol: float = 0.05, max_iter: int = 16, verbose: bool = True,
 ) -> tuple[int, int]:
-    cfg = cfg or KeyedRotationConfig()
+    cfg = cfg or KMosaicConfig()
     N = len(Z)
     target = int(target_cells)
     if not 1 <= target <= N:
@@ -389,7 +389,7 @@ def m_for_cells(corpus: str, cells: int, alpha: float = 1.3, branching: int = 8)
         raise SystemExit(
             f"--kr-cells {cells}: no solved occupancy for {key!r} in {CALIB_PATH}.\n"
             f"Solve it once (minutes, one-time per C), then re-run:\n"
-            f"  python -m defense.keyed_rotation calibrate \\\n"
+            f"  python -m defense.k_mosaic calibrate \\\n"
             f"      --vectors ANN/cache/<model>__{corpus}__n<N>__<hash>.npy \\\n"
             f"      --corpus {corpus} --cells {cells} "
             f"--alpha {alpha:g} --branching {branching}"
@@ -404,7 +404,7 @@ def _calibrate_cli(argv: list[str]) -> int:
     import os
 
     ap = argparse.ArgumentParser(
-        prog="python -m defense.keyed_rotation calibrate",
+        prog="python -m defense.k_mosaic calibrate",
         description="Solve the occupancy m whose partition has ~C cells, and record it "
                     "so --kr-cells C can use it. Read-only apart from the table it writes.")
     ap.add_argument("--vectors", required=True,
@@ -425,7 +425,7 @@ def _calibrate_cli(argv: list[str]) -> int:
 
     Z = np.load(a.vectors, mmap_mode="r")
     print(f"calib {a.vectors}: {Z.shape[0]:,} x {Z.shape[1]} -> target C={a.cells:,}")
-    cfg = KeyedRotationConfig(alpha=a.alpha, branching=a.branching, candidates=a.candidates,
+    cfg = KMosaicConfig(alpha=a.alpha, branching=a.branching, candidates=a.candidates,
                               metric=a.metric, seed=a.seed)
     Zc = np.ascontiguousarray(Z, dtype=np.float32)
     m, c = solve_m_for_cells(Zc, a.cells, cfg, tol=a.tol)
@@ -438,7 +438,7 @@ def _calibrate_cli(argv: list[str]) -> int:
     if a.full_fit:
         from dataclasses import replace
 
-        kr = KeyedRotation(replace(cfg, m=m)).fit(Zc)
+        kr = KMosaic(replace(cfg, m=m)).fit(Zc)
         rep = kr.report()
         record["report"] = rep
         print("calib partition after capped assignment:")

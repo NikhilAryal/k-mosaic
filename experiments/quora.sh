@@ -224,7 +224,7 @@ if stage match; then      # solve each tunable defense's knob to ANN recall@10 =
   for l in $LAYOUTS; do
     if [ "$l" != flat ] && [ "$l" != N/m ] && \
        ! grep -q "\"$DATASET|C$l|" metrics/outputs/cells_to_m.json 2>/dev/null; then
-      python3 -u -m defense.keyed_rotation calibrate --corpus $DATASET --cells "$l" --full-fit \
+      python3 -u -m defense.k_mosaic calibrate --corpus $DATASET --cells "$l" --full-fit \
         --vectors "$(ls -t ANN/cache/${VICTIM}__${DATASET}__n*.npy | head -1)"
     fi
     for d in "${TUNABLE[@]}"; do
@@ -241,7 +241,7 @@ if stage ladder; then     # every attack x every defense, one by one
     for l in $LAYOUTS; do
       [ "$l" = flat ] && adaptive "$a" && continue
       defenses=("${FIXED[@]}" "${TUNABLE[@]}")
-      [ "$l" = flat ] || defenses=(keyed_rotation "${defenses[@]}")
+      [ "$l" = flat ] || defenses=(k_mosaic "${defenses[@]}")
       for d in "${defenses[@]}"; do arm "$a" "$d" "$l"; done
     done
   done

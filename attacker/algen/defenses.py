@@ -232,7 +232,7 @@ def remote_rag_transform(
     return defender.protect(X, radius=radius), defender
 
 
-def keyed_rotation_transform(
+def k_mosaic_transform(
     X: torch.Tensor,
     defender: "Any" = None,
     checkpoint: "str | Path | None" = None,
@@ -240,17 +240,17 @@ def keyed_rotation_transform(
     if defender is None:
         if checkpoint is None:
             raise ValueError(
-                "defense 'keyed_rotation' needs a fitted partition: pass "
-                "keyed_rotation_checkpoint=<path from KeyedRotation(cfg).fit(Z).save(path)>, "
+                "defense 'k_mosaic' needs a fitted partition: pass "
+                "k_mosaic_checkpoint=<path from KMosaic(cfg).fit(Z).save(path)>, "
             )
-        from defense.keyed_rotation import KeyedRotation
+        from defense.k_mosaic import KMosaic
 
-        defender = KeyedRotation.load(checkpoint, device=str(X.device))
+        defender = KMosaic.load(checkpoint, device=str(X.device))
     return defender.protect(X), defender
 
 
 
-STATEFUL = {"shuffling", "wet", "eguard", "sparse", "idct", "cmag", "keyed_rotation"}
+STATEFUL = {"shuffling", "wet", "eguard", "sparse", "idct", "cmag", "k_mosaic"}
 
 DEFENSES: dict[str, str] = {
     "none": "no perturbation",
@@ -267,7 +267,7 @@ DEFENSES: dict[str, str] = {
     "cmag": "per-neighbourhood analytic Gaussian at --epsilon (defense/cmag.py)",
     "vec2text": "Gaussian noise at --vec2text-noise-level, unnormalised (defense/vec2text.py)",
     "remote_rag": "(n, eps)-DistanceDP at --remote-rag-radius (defense/remote_rag.py)",
-    "keyed_rotation": "secret rotation per density-adaptive cell (defense/keyed_rotation.py); "
+    "k_mosaic": "secret rotation per density-adaptive cell (defense/k_mosaic.py); "
                       "in the ladder, --partition over no base defense",
 }
 
@@ -289,7 +289,7 @@ def apply_defense(
     remote_rag_radius: float | None = None,
     idct_subsets: int = 2,
     idct_seed: int = 0,
-    keyed_rotation_checkpoint: "str | Path | None" = None,
+    k_mosaic_checkpoint: "str | Path | None" = None,
     state: dict | None = None,
 ) -> tuple[torch.Tensor, dict]:
     state = dict(state or {})
@@ -347,10 +347,10 @@ def apply_defense(
         )
         state["idct"] = defender
         return out, state
-    if method == "keyed_rotation":
-        out, defender = keyed_rotation_transform(
-            X, state.get("keyed_rotation"), keyed_rotation_checkpoint
+    if method == "k_mosaic":
+        out, defender = k_mosaic_transform(
+            X, state.get("k_mosaic"), k_mosaic_checkpoint
         )
-        state["keyed_rotation"] = defender
+        state["k_mosaic"] = defender
         return out, state
     raise KeyError(f"Unknown defense {method!r}. Known: {sorted(DEFENSES)}")

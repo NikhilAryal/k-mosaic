@@ -25,14 +25,14 @@ class PartitionSpec:
     rotate: bool = True
 
     def config(self, metric: str, seed: int):
-        from defense.keyed_rotation import KeyedRotationConfig
+        from defense.k_mosaic import KMosaicConfig
 
-        return KeyedRotationConfig(m=self.m, alpha=self.alpha, branching=self.branching,
+        return KMosaicConfig(m=self.m, alpha=self.alpha, branching=self.branching,
                                    candidates=self.candidates, key=self.key, seed=seed,
                                    metric=metric)
 
     def storage_tag(self) -> str:
-        from defense.keyed_rotation import PRF_VERSION
+        from defense.k_mosaic import PRF_VERSION
 
         tag = f"kr{PRF_VERSION}_m{self.m}_a{self.alpha:g}_b{self.branching}"
         return tag if self.rotate else tag + "_norot"
@@ -77,10 +77,10 @@ class PartitionedIndex:
     @classmethod
     def build(cls, X: np.ndarray, spec: IndexSpec, pspec: PartitionSpec, *, seed: int = 42,
               device: str | None = None) -> "PartitionedIndex":
-        from defense.keyed_rotation import KeyedRotation
+        from defense.k_mosaic import KMosaic
 
         check_flat(spec)
-        kr = KeyedRotation(pspec.config(spec.metric, seed), device=device).fit(X)
+        kr = KMosaic(pspec.config(spec.metric, seed), device=device).fit(X)
         out = cls(kr, spec, pspec)
         stored = kr.protect(X, kr.labels) if pspec.rotate else X
         order = np.argsort(kr.labels, kind="stable")
@@ -150,7 +150,7 @@ class PartitionedStorage:
 
     def describe(self) -> str:
         r = self.kr.report()
-        rot = "keyed rotation per cell" if self.pspec.rotate else "NO rotation (control)"
+        rot = "k_mosaic per cell" if self.pspec.rotate else "NO rotation (control)"
         return (f"partitioned {self.spec.factory} [{self.spec.metric}] storage, "
                 f"{r['cells_effective']} cells (m={self.pspec.m}, alpha={self.pspec.alpha:g}), "
                 f"{rot}")

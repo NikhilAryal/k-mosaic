@@ -55,8 +55,8 @@ from .index import (BUDGET_GRID, IndexSpec, IndexStorage, build_index, empty_ind
 #         "index, but the undefended CEILING and the two floors are measured in the "
 #         "ordinary unpartitioned index. leak_norm is the fraction of the undefended "
 #         "system's leakage that survives, so its denominator must not already include "
-#         "the defense being evaluated. The keyed rotation alone is its own arm "
-#         "(--defense keyed_rotation)."
+#         "the defense being evaluated. The k_mosaic alone is its own arm "
+#         "(--defense k_mosaic)."
 #     ),
 #     "partition_utility": (
 #         "Partitioned utility is recall of the full partitioned system — routing, "
@@ -290,9 +290,9 @@ class AnnProbe:
     def _defend(self, defense: str, kwargs: dict[str, Any]) -> np.ndarray:
         from attacker.algen.defenses import apply_defense
 
-        if defense in ("none", "", None, "keyed_rotation"):
-            if defense == "keyed_rotation" and self.partition is None:
-                raise ValueError("keyed_rotation is measured through the partitioned "
+        if defense in ("none", "", None, "k_mosaic"):
+            if defense == "k_mosaic" and self.partition is None:
+                raise ValueError("k_mosaic is measured through the partitioned "
                                  "index: pass --partition")
             return self.corpus.vectors
         X = as_tensor(self.corpus.vectors, self.device)
@@ -361,7 +361,7 @@ class AnnProbe:
         truth = self.corpus.truth(self.k, self.spec.metric)
         rows = self.corpus.query_rows
         seed = self.seed if seed is None else seed
-        n_rep = (1 if defense in ("none", "", None, "keyed_rotation")
+        n_rep = (1 if defense in ("none", "", None, "k_mosaic")
                  else (repeats or self.repeats))
 
         scores: list[float] = []
@@ -433,11 +433,11 @@ class AnnProbe:
         np.random.seed(self.seed)
         D = prepare(self._defend(defense, dict(kwargs or {})), self.spec.metric)
         if self.partition is not None:
-            from defense.keyed_rotation import KeyedRotation
+            from defense.k_mosaic import KMosaic
 
             from .partitioned import PartitionedStorage
 
-            kr = KeyedRotation(self.partition.config(self.spec.metric, self.seed),
+            kr = KMosaic(self.partition.config(self.spec.metric, self.seed),
                                device=self.device).fit(D)
             return PartitionedStorage(kr, self.spec, self.partition)
         index = empty_index(self.spec, dim)
@@ -468,7 +468,7 @@ def add_ann_args(p: Any) -> None:
                    help="rows used to train IVF/PQ/SQ codecs")
 
     g = p.add_argument_group(
-        "locality-keyed rotation (--partition; defense/keyed_rotation.py, ANN/partitioned.py)")
+        "k_mosaic (--partition; defense/k_mosaic.py, ANN/partitioned.py)")
     g.add_argument("--partition", action="store_true",
                    help="store every defended arm in a density-adaptive partitioned index "
                         "with a secret rotation per cell (composed over the base defense). "
@@ -477,7 +477,7 @@ def add_ann_args(p: Any) -> None:
                    help="target occupancy: cells are split until they hold <= m docs")
     g.add_argument("--kr-cells", type=int, default=None,
                    help="target CELL COUNT C; overrides --kr-m with the occupancy solved "
-                        "for it by `python -m defense.keyed_rotation calibrate`. Use this "
+                        "for it by `python -m defense.k_mosaic calibrate`. Use this "
                         "for a C-sweep: effective C is ~1.6x N/m, so deriving m as N/C "
                         "mislabels every point")
     g.add_argument("--kr-alpha", type=float, default=1.3,
@@ -507,7 +507,7 @@ def partition_from_args(args: Any) -> Any:
     m = int(args.kr_m)
     cells = getattr(args, "kr_cells", None)
     if cells:
-        from defense.keyed_rotation import m_for_cells
+        from defense.k_mosaic import m_for_cells
 
         m = m_for_cells(str(args.attack_dataset), cells, args.kr_alpha, args.kr_branching)
         print(f"[ann] --kr-cells {cells} -> --kr-m {m} ({args.attack_dataset})")

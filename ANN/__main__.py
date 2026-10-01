@@ -66,7 +66,6 @@ def cmd_knob(argv: list[str]) -> int:
 
 
 def cmd_selftest(argv: list[str]) -> int:
-    """Checks that do not need a corpus: storage, self-exclusion, recall ordering."""
     import numpy as np
     import torch
 
@@ -152,8 +151,7 @@ def cmd_selftest(argv: list[str]) -> int:
     pt = PartitionSpec(m=500, nprobe=8, key="selftest")
     rot = AnnProbe(corpus, spec, k=10, repeats=1, seed=0, partition=pt)
     ur = rot.measure("none", curve=True)
-    # On unclustered data, so neighbourhoods straddle cells (in the clustered corpus a
-    # whole cluster fits in one cell and nprobe=1 is already perfect).
+ 
     U = rng.standard_normal((20_000, 32)).astype(np.float32)
     U /= np.linalg.norm(U, axis=1, keepdims=True)
     flat_corpus = ANNCorpus(vectors=U, ids=[str(i) for i in range(len(U))], dataset="u",
@@ -162,7 +160,6 @@ def cmd_selftest(argv: list[str]) -> int:
     un = AnnProbe(flat_corpus, spec, k=10, repeats=1, seed=0,
                   partition=PartitionSpec(m=500, nprobe=8, key="selftest", rotate=False)
                   ).measure("none")
-    # Unsaturated (recall ~0.67 at nprobe 8), so a cost would show; equal up to HNSW jitter.
     check("rotation costs no recall given the partition", abs(uc.recall - un.recall) < 0.01,
           f"{uc.recall:.4f} rotated vs {un.recall:.4f} not")
     check("nprobe buys recall back", uc.curve[-1][1] > uc.curve[0][1] + 0.2,
@@ -187,8 +184,7 @@ def cmd_selftest(argv: list[str]) -> int:
 
 
 def cmd_assumptions(argv: list[str]) -> int:
-    """Every documented assumption behind ANN utility and the keyed-rotation partition."""
-    from defense.keyed_rotation import AMBIGUITIES
+    # from defense.k_mosaic import AMBIGUITIES
 
     from .partitioned import __doc__ as part_doc
     from .probe import ASSUMPTIONS
@@ -198,12 +194,12 @@ def cmd_assumptions(argv: list[str]) -> int:
         print(f"\n[{k}]\n  {v}")
     print("\n" + "=" * 88 + "\nPartitioned index (ANN/partitioned.py)\n" + "=" * 88)
     print(part_doc)
-    print("=" * 88 + "\nLocality-keyed rotation (defense/keyed_rotation.py AMBIGUITIES)\n"
+    print("=" * 88 + "\nk_mosaic (defense/k_mosaic.py AMBIGUITIES)\n"
           + "=" * 88)
-    for k, v in AMBIGUITIES.items():
-        print(f"\n[{k}]")
-        for f, text in v.items():
-            print(f"  {f:>8}: {text}")
+    # for k, v in AMBIGUITIES.items():
+    #     print(f"\n[{k}]")
+    #     for f, text in v.items():
+    #         print(f"  {f:>8}: {text}")
     return 0
 
 
