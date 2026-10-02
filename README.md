@@ -48,40 +48,28 @@ bash experiments/msmarco.sh [STAGE ...] [FLAGS]
 | `report` | flat-vs-partitioned tables |
 | `status` | read-only: what's trained, knobs, arms done/failed/skipped, what's running |
 
-**Flags**
-
-| Flag | Default | Meaning |
-|---|---|---|
-| `--leaked-samples N` | 1000 | leaked (text, vector) pairs: ALGEN/STEER alignment pairs and TEIA's D_L |
-| `--cells C` | `N/m` | cell count of the partitioned index (`N/m` = default occupancy m=1000, ≈828 cells on Quora) |
-| `--cell-sweep "C …"` | `N/m` | extra cell counts, e.g. `"20 200 2000"` |
-| `--victim M` | gtr-base | victim encoder (e.g. `st5`) |
-| `--attacks "…"` | `algen steer teia zero2text` | for `ladder`/`report` only; add `algen-cellmap algen-cellmap-norot` for the adaptive attack |
-| `--cell-min-pairs N` | 1 | per-cell ALGEN: fewest pairs a cell needs for its own map |
-| `--min-headroom X` | 0.10 | validity gate on ceiling − floor (MS MARCO needs 0.05) |
-| `--gpu N` / `--cores N` | 0 / all | CUDA device / CPU threads (set both when runs share the machine) |
 
 ## Full pipeline from scratch
 
 If possible, run each command inside `tmux`. Commands within a numbered block can run in parallel using --gpu flag
 
 ```bash
-# 0. inputs — one after another, before anything else
+# 0. inputs — one after another, before anything else (~10-20 mins)
 bash experiments/msmarco.sh prepare embed
 bash experiments/quora.sh embed
 bash experiments/quora.sh embed --victim st5
 
-# 1. shared ALGEN stage 1 — once
+# 1. shared ALGEN stage 1 — once (~30 mins)
 bash experiments/quora.sh pretrain
 
-# 2. training + knobs (parallel)
+# 2. training + knobs (parallel) (~6-7 hrs)
 bash experiments/quora.sh   defenses match --cell-sweep "20 200 2000"  
 bash experiments/msmarco.sh defenses match --min-headroom 0.05          
-bash experiments/quora.sh   --victim st5                                    # full st5 pipeline
+bash experiments/quora.sh   --victim st5                             # full st5 pipeline
 bash experiments/quora.sh train teia-train  
 bash experiments/msmarco.sh train teia-train 
 
-# 3. ladders + reports, after ALL of step 2 ends (parallel; split by attack, never split algen/steer)
+# 3. ladders + reports, after ALL of step 2 ends (parallel; split by attack, never split algen/steer) (~6-7 hrs)
 bash experiments/quora.sh ladder report --attacks "algen steer" --cell-sweep "20 200 2000" 
 bash experiments/quora.sh ladder report --attacks teia          --cell-sweep "20 200 2000" 
 bash experiments/quora.sh ladder report --attacks zero2text     --cell-sweep "20 200 2000" 
