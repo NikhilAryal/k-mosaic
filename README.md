@@ -62,7 +62,7 @@ bash experiments/msmarco.sh [STAGE ...] [FLAGS]
 
 ## Full pipeline from scratch
 
-If possible, run each command inside `tmux`. Commands within a numbered block can run in parallel.
+If possible, run each command inside `tmux`. Commands within a numbered block can run in parallel using --gpu flag
 
 ```bash
 # 0. inputs — one after another, before anything else
@@ -74,37 +74,36 @@ bash experiments/quora.sh embed --victim st5
 bash experiments/quora.sh pretrain
 
 # 2. training + knobs (parallel)
-bash experiments/quora.sh   defenses match --cell-sweep "20 200 2000"  --gpu 0 --cores 64
-bash experiments/msmarco.sh defenses match --min-headroom 0.05          --gpu 1 --cores 32
-bash experiments/quora.sh   --victim st5                                 --gpu 2 --cores 32   # full st5 pipeline
-bash experiments/quora.sh train teia-train --gpu 3 --cores 32 && bash experiments/msmarco.sh train teia-train --gpu 3 --cores 32
+bash experiments/quora.sh   defenses match --cell-sweep "20 200 2000"  
+bash experiments/msmarco.sh defenses match --min-headroom 0.05          
+bash experiments/quora.sh   --victim st5                                    # full st5 pipeline
+bash experiments/quora.sh train teia-train  
+bash experiments/msmarco.sh train teia-train 
 
-# 3. ladders + reports, after ALL of step 2 (parallel; split by attack, never split algen/steer)
-bash experiments/quora.sh ladder report --attacks "algen steer" --cell-sweep "20 200 2000" --gpu 0 --cores 48
-bash experiments/quora.sh ladder report --attacks teia          --cell-sweep "20 200 2000" --gpu 1 --cores 48
-bash experiments/quora.sh ladder report --attacks zero2text     --cell-sweep "20 200 2000" --gpu 2 --cores 48
-bash experiments/msmarco.sh ladder report --attacks "algen steer" --min-headroom 0.05 --gpu 0 --cores 48   # then teia, zero2text alike
+# 3. ladders + reports, after ALL of step 2 ends (parallel; split by attack, never split algen/steer)
+bash experiments/quora.sh ladder report --attacks "algen steer" --cell-sweep "20 200 2000" 
+bash experiments/quora.sh ladder report --attacks teia          --cell-sweep "20 200 2000" 
+bash experiments/quora.sh ladder report --attacks zero2text     --cell-sweep "20 200 2000" 
+bash experiments/msmarco.sh ladder report --attacks "algen steer" --min-headroom 0.05    # then teia, zero2text alike
 
-# 4. leaked-pair sweep (parallel; each trains its own generator + decoder)
-bash experiments/quora.sh --leaked-samples 2000 --gpu 0 --cores 48
-bash experiments/quora.sh --leaked-samples 4000 --gpu 1 --cores 48
+# 4. leaked-pair sweep after step 3 ends (parallel; each trains its own generator + decoder)
+bash experiments/quora.sh --leaked-samples 2000 
+bash experiments/quora.sh --leaked-samples 4000 
 ```
 
 **Adaptive per-cell ALGEN** (Quora; needs step 2's `train` and `match --cell-sweep`):
 
 ```bash
 # phase 1: floors, flat arms, C=N/m
-bash experiments/quora.sh ladder --attacks algen-cellmap --gpu 0 --cores 48
+bash experiments/quora.sh ladder --attacks algen-cellmap 
 # phase 2 (parallel)
-bash experiments/quora.sh ladder --attacks algen-cellmap       --cell-sweep "20 200 2000"          --gpu 0 --cores 48
-bash experiments/quora.sh ladder --attacks algen-cellmap-norot --cells 20   --cell-sweep "N/m 20"   --gpu 1 --cores 32
-bash experiments/quora.sh ladder --attacks algen-cellmap-norot --cells 200  --cell-sweep 200        --gpu 2 --cores 32
-bash experiments/quora.sh ladder --attacks algen-cellmap-norot --cells 2000 --cell-sweep 2000       --gpu 3 --cores 32
+bash experiments/quora.sh ladder --attacks algen-cellmap       --cell-sweep "20 200 2000" 
+bash experiments/quora.sh ladder --attacks algen-cellmap-norot --cells 20   --cell-sweep "N/m 20" 
+bash experiments/quora.sh ladder --attacks algen-cellmap-norot --cells 200  --cell-sweep 200       
+bash experiments/quora.sh ladder --attacks algen-cellmap-norot --cells 2000 --cell-sweep 2000      
 bash experiments/quora.sh report --attacks "algen algen-cellmap algen-cellmap-norot" --cell-sweep "20 200 2000"
 ```
 
-To run sequentially instead, use one command:
-`ladder --attacks "algen-cellmap algen-cellmap-norot" --cell-sweep "20 200 2000"`.
 
 **Monitor progress:**
 
@@ -115,17 +114,6 @@ bash experiments/quora.sh status --cell-sweep "20 200 2000"
 Pass the same `--leaked-samples`, `--victim`, `--attacks` and cell flags as the run you're
 checking.
 
-## Outputs
-
-| Path | Contents |
-|---|---|
-| `data/` | frozen corpora, target sets |
-| `ANN/cache/` | encoded corpora (1.6–3 GB each) |
-| `attacker/outputs/verify/` | ALGEN stage 1; `<victim>/` defenses and TEIA decoders; `<victim>/pairs<N>/` generators |
-| `metrics/outputs/verify/<victim>/` | ladder arms, `matched.json` (knobs), `logs/`, `zero2text/`, `algen_cellmaps/` |
-
-Each report table is also written as `compare_partition.json` next to its arms.
-
 ## Rules for parallel runs
 
 - **Never train the same thing twice at once.** Run shared stages (`embed`, `pretrain`,
@@ -134,12 +122,7 @@ Each report table is also written as `compare_partition.json` next to its arms.
 
 ## Reproducibility
 
-- **Seeds:** 42 everywhere (configs, splits, defense fits, and the k_mosaic HMAC key `keyed-rotation-42`, kept from
-  VecSec so the rotations and folder hashes are unchanged); targets
-  use seeds 1, 2, 3; the MS MARCO subsample uses `sample_seed=42`.
 - **Training is deterministic** given the same inputs.
-- **HNSW index builds are not deterministic:**, expect small differences in leak_norm (+- 0.01)
+- **HNSW index builds are not deterministic:**, expect small differences in F1 score and leak_norm (2nd decimal places)
 - **Knobs are matched to 0.90 ± 0.01**, on a coarse log grid, so different corpora often
   get identical knob values.
-- **A knob that doesn't converge skips its arms** and prints `!! … knob did not
-  converge`. Known cases: st5 gaussian, and remote_rag at C=200.
