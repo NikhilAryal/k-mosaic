@@ -34,7 +34,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="Reproduce the full ALGEN inversion pipeline against data/embeddings.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    p.add_argument("--config", default=None, help="YAML config; CLI overrides it")
+    p.add_argument("--config", default=None, help="YAML config")
     p.add_argument("--print-config", action="store_true", help="print resolved settings and exit")
     p.add_argument("--dry-run", action="store_true", help="show the plan without running it")
     p.add_argument(
@@ -76,7 +76,7 @@ def build_parser() -> argparse.ArgumentParser:
     g.add_argument("--eguard-eval-samples", type=int, default=500,
                    help="disjoint slice for the retrieval-utility report (recall@k, Spearman)")
     g.add_argument("--eguard-alpha", type=float, default=1.0,
-                   help="alpha in Eq. 8: weight on the MI term. 0 disables the privacy half")
+                   help="alpha weight on the MI term. 0 disables the privacy half")
     g.add_argument("--eguard-epochs", type=int, default=25)
     g.add_argument("--eguard-lr", type=float, default=1e-4,
                    help="the paper's 2e-5 suits a pretrained backbone; g_p from scratch wants more")
@@ -84,12 +84,12 @@ def build_parser() -> argparse.ArgumentParser:
                    help="also the negative pool for InfoNCE and the similarity matrix")
     g.add_argument("--eguard-layers", type=int, default=4)
     g.add_argument("--eguard-backbone", default=None,
-                   help="None builds g_p from scratch; 'roberta-large' is the paper's 24 layers")
+                   help="None builds g_p from scratch")
     g.add_argument("--eguard-mi-estimator", default="infonce", choices=["infonce", "mine", "probe"])
     g.add_argument("--eguard-latent-model", default="gte-base",
                    help="g_a, the auxiliary text encoder. Must differ from the victim encoder")
     g.add_argument("--eguard-stochastic", action="store_true",
-                   help="variational bottleneck: e' is sampled, and the KL upper-bounds I(e;e')")
+                   help="variational bottleneck")
     g.add_argument("--eguard-utility-k", type=int, default=10,
                    help="k for the recall@k neighbour-overlap report")
 
@@ -103,35 +103,28 @@ def build_parser() -> argparse.ArgumentParser:
     g.add_argument("--sparse-concept-name", default="entities",
                    help="label for the privacy concept C; provenance only")
     g.add_argument("--sparse-concept-entity-types", default="PERSON,ORG,GPE,DATE",
-                   help="spaCy NER labels defining C (Appendix E). Empty string disables NER")
+                   help="spaCy NER labels defining C. Empty string disables NER")
     g.add_argument("--sparse-concept-tokens", default="",
-                   help="comma-separated explicit vocabulary for C; unioned with the NER labels. "
-                        "The reproducible option — needs no spaCy install")
+                   help="comma-separated explicit vocabulary for C; unioned with the NER labels.")
     g.add_argument("--sparse-spacy-model", default="en_core_web_sm")
     g.add_argument("--sparse-removal", default="delete", choices=["delete", "placeholder", "unk"],
-                   help="how R(s,C) builds D- from D-plus; the paper never defines it")
+                   help="how R(s,C) builds D- from D-plus")
     g.add_argument("--sparse-epsilon-scale", default="absolute", choices=["absolute", "per_dim"],
-                   help="'absolute' takes eps literally (Alg. 1: E|Z| ~ n/eps, so eps=10 at n=768 "
-                        "puts the noise 77x a unit-norm embedding). 'per_dim' reads eps as a "
-                        "per-dimension budget, eps_eff = eps*n, giving E|Z| ~ 1/eps")
+                   help="absolute")
     g.add_argument("--sparse-epsilon", type=float, default=10.0,
-                   help="privacy budget for the Mahalanobis mechanism. The paper sweeps "
-                        "{5,10,20,30,40}; this is the one used unless --sparse-epsilon-sweep is set")
+                   help="privacy budget for the Mahalanobis mechanism.")
     g.add_argument("--sparse-epsilon-sweep", default=None,
-                   help="comma-separated eps values to attack, e.g. '5,10,20,40'. The mask does "
-                        "not depend on eps, so one fit covers the whole curve")
+                   help="comma-separated eps values to attack")
     g.add_argument("--sparse-lam", type=float, default=1e-3,
-                   help="lambda in Eq. 5: sparsity vs separability. Watch sigma_max in the report")
+                   help="lambda: sparsity vs separability")
     g.add_argument("--sparse-epochs", type=int, default=100)
     g.add_argument("--sparse-lr", type=float, default=1e-4,
-                   help="Appendix H.2's lr, for the classifier P_theta")
+                   help="classifier P_theta")
     g.add_argument("--sparse-mask-lr", type=float, default=1e-2,
-                   help="separate lr for the gate logits. At the paper's single 1e-4 the mask "
-                        "cannot sparsify at all (log alpha travels ~lr x steps, a gate closes at "
-                        "-2.4), which makes its own lambda sweep inert. <=0 restores that setup")
+                   help="separate lr for the gate logits")
     g.add_argument("--sparse-batch-size", type=int, default=64)
     g.add_argument("--sparse-l0-sign", default="standard", choices=["standard", "paper"],
-                   help="'paper' reproduces Eq. 4's literal leading minus, which is anti-sparse")
+                   help="'l0 sign in paper")
     g.add_argument("--sparse-utility-k", type=int, default=10,
                    help="k for the recall@k neighbour-overlap report")
 
@@ -143,28 +136,25 @@ def build_parser() -> argparse.ArgumentParser:
     g.add_argument("--cmag-eval-samples", type=int, default=500,
                    help="disjoint slice for the retrieval-utility report")
     g.add_argument("--cmag-group-size", type=int, default=100,
-                   help="the paper's top-100 neighbourhoods. A group of m gives a rank-(m-1) "
-                        "covariance, so m also decides how much of the space is left unnoised")
+                   help="the cmag size")
     g.add_argument("--cmag-min-group-size", type=int, default=None,
-                   help="groups below this are merged into the nearest; default group_size//2")
+                   help="groups below this are merged into the nearest")
     g.add_argument("--cmag-epsilon", type=float, default=16.0,
-                   help="eps in {1.6, 3.2, ..., 40.0} in the paper's sweep")
+                   help="eps in the paper's sweep")
     g.add_argument("--cmag-epsilon-sweep", default=None,
-                   help="comma-separated eps values to attack, e.g. '1.6,8,16,40'. The covering "
-                        "does not depend on eps, so one fit covers the whole curve")
+                   help="comma-separated eps values to attack")
     g.add_argument("--cmag-delta", type=float, default=1e-5,
-                   help="delta_j in Theorem 3. The paper never says how to choose it; its code "
-                        "uses 1/|X_j|^k with a hardcoded per-eps k table (delta ~ 1e-31 to 1e-58)")
+                   help="delta_j in Theorem 3")
     g.add_argument("--cmag-delta-mode", default="fixed", choices=["fixed", "power"],
-                   help="'power' reproduces the released code's delta_j = |X_j|^-k")
+                   help="delta in paper")
     g.add_argument("--cmag-delta-exponent", type=float, default=15.0,
                    help="k, used only when --cmag-delta-mode power")
     g.add_argument("--cmag-variant", default="mahalanobis", choices=["mahalanobis", "euclidean"],
-                   help="'euclidean' is the paper's CMAG(E) ablation: U = I and Euclidean d_0")
+                   help="euclidean")
     g.add_argument("--cmag-u-power", default="sqrt", choices=["sqrt", "inv_sqrt"],
-                   help="Def. 6 says U = Sigma^{1/2}; Section 4.2's prose says Sigma^{-1/2}")
+                   help="u-pow")
     g.add_argument("--cmag-assign", default="centroid", choices=["centroid", "nearest_member"],
-                   help="how an unseen embedding picks its group. The paper has no such notion")
+                   help="how an unseen embedding picks its group")
     g.add_argument("--cmag-utility-k", type=int, default=10,
                    help="k for the recall@k neighbour-overlap report")
 
@@ -176,19 +166,13 @@ def build_parser() -> argparse.ArgumentParser:
     g.add_argument("--vec2text-eval-samples", type=int, default=500,
                    help="disjoint slice for the retrieval-utility report")
     g.add_argument("--vec2text-noise-level", type=float, default=0.01,
-                   help="lambda in phi_noisy(x) = phi(x) + lambda*eps. Table 7's knee is 0.01; "
-                        "note Section 6's prose says 0.1, which its own Table 7 shows destroys "
-                        "retrieval (NDCG@10 0.302 -> 0.002)")
+                   help="lambda in phi_noisy(x) = phi(x) + lambda*eps")
     g.add_argument("--vec2text-noise-sweep", default=None,
-                   help="comma-separated lambda values, e.g. '0,0.001,0.01,0.1,1'. Reproduces "
-                        "the axis of Table 7; the defense is stateless so one run covers it")
+                   help="comma-separated lambda values")
     g.add_argument("--vec2text-noise-scale", default="absolute", choices=["absolute", "relative"],
-                   help="'absolute' takes lambda literally (noise norm = lambda*sqrt(n), which is "
-                        "what the paper's GTR-base numbers mean). 'relative' reads lambda as a "
-                        "fraction of ||e|| for a non-unit-norm encoder")
+                   help="absolute")
     g.add_argument("--vec2text-renormalize", action="store_true",
-                   help="project e' back onto the unit sphere. A no-op for retrieval utility, but "
-                        "it reproduces the existing --defense gaussian baseline exactly")
+                   help="project e' back onto the unit sphere")
     g.add_argument("--vec2text-utility-k", type=int, default=10,
                    help="k for the recall@k neighbour-overlap report")
 
@@ -200,21 +184,16 @@ def build_parser() -> argparse.ArgumentParser:
     g.add_argument("--remote-rag-eval-samples", type=int, default=500,
                    help="disjoint slice for the retrieval-utility report")
     g.add_argument("--remote-rag-radius", type=float, default=0.05,
-                   help="r, the perturbation radius. Table 6 sweeps {0.03,0.05,0.07,0.1}; "
-                        "eps = n/r, so r=0.05 at n=768 means eps=15360")
+                   help="r, the perturbation radius.")
     g.add_argument("--remote-rag-radius-sweep", default=None,
                    help="comma-separated r values, e.g. 0.03,0.05,0.07,0.1 — Table 6 axis")
     g.add_argument("--remote-rag-budget-mode", default="radius",
                    choices=["radius", "per_dim", "absolute"],
-                   help="'radius' takes r directly (the paper's own knob). 'per_dim' reads "
-                        "--remote-rag-epsilon as eps/n (Figure 2 uses eps = 10n). 'absolute' "
-                        "takes eps literally — the reading under which SPARSE's eps=5..40 "
-                        "destroys a unit-norm embedding with this same sampler")
+                   help="radius")
     g.add_argument("--remote-rag-epsilon", type=float, default=10.0,
                    help="eps, used by --remote-rag-budget-mode per_dim/absolute")
     g.add_argument("--remote-rag-renormalize", action="store_true",
-                   help="project e' back onto the unit sphere; the paper is silent and the "
-                        "drift is tiny (norm ~ sqrt(1+r^2))")
+                   help="project e' back onto the unit sphere")
     g.add_argument("--remote-rag-utility-k", type=int, default=10,
                    help="k for the recall@k neighbour-overlap report")
 
@@ -233,14 +212,10 @@ def build_parser() -> argparse.ArgumentParser:
         "upstream's behaviour). Inert on long documents, live on short ones.",
     )
     g.add_argument("--defense", default="none",
-                   help="perturbation applied to victim vectors, and the defense stage 3 fits. "
-                        "'eguard' uses g_p; 'sparse' uses the concept mask; the closed-form "
-                        "baselines (lapmech, purmech, gaussian, ...) need no stage 3. "
-                        "Settable from YAML as `defense: {method: sparse}`")
+                   help="perturbation applied to victim vectors, and the defense stage 3 fits. ")
     g.add_argument("--compare", action="store_true",
                    help="run the attack on e and on e' and print the delta table. The defended "
-                        "arm is --defense (eguard when it is left at 'none', for backwards "
-                        "compatibility)")
+                        "arm is --defense ")
     g.add_argument("--noise-level", type=float, default=0.0)
     g.add_argument("--epsilon", type=float, default=1.0)
     g.add_argument("--show", type=int, default=5)

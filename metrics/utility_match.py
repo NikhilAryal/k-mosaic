@@ -310,20 +310,12 @@ def add_match_args(p: argparse.ArgumentParser) -> None:
                         "are stochastic. Each draw is a full index build, so this is the "
                         "main cost knob of the match stage")
     g.add_argument("--match-verify-repeats", type=int, default=None,
-                   help="draws for the independent re-measure that decides `converged` "
-                        "(default: max(--match-repeats, 3)). Averaging the VERIFY step "
-                        "rather than every bisection probe keeps the reported operating "
-                        "point as well determined while halving the builds")
+                   help="draws for the independent re-measure that decides `converged` ")
     g.add_argument("--match-tolerance", type=float, default=0.01,
                    help="how close to --target-recall counts as matched")
     g.add_argument("--match-max-iter", type=int, default=20)
     g.add_argument("--match-metric", default="ann", choices=["ann", "recall"],
-                   help="the utility the knob is solved against and that the ladder "
-                        "reports. 'ann' (the traced path) = recall@k under a faiss "
-                        "index over the whole corpus (see --ann-*), and the attack "
-                        "then inverts the vectors as the index stores them; 'recall' = "
-                        "brute-force recall@k on a 500-doc slice, kept only as the "
-                        "bisection's fallback probe")
+                   help="the utility the knob is solved against and that the ladder ")
     from ANN import add_ann_args
 
     add_ann_args(p)

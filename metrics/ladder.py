@@ -57,43 +57,21 @@ def build_parser() -> argparse.ArgumentParser:
                         "is token_f1: the most robust of the four, so the least likely "
                         "to hit its floor for reasons unrelated to the defense")
     g.add_argument("--recall-at-k", type=float, default=None,
-                   help="the defended arm's retrieval utility. Without it, an arm at "
-                        "leak_norm ~ 0 cannot be told apart from one that destroyed "
-                        "the space, and is left unclassified. Read from the defense's "
-                        "own *_report.json when not given")
+                   help="the defended arm's retrieval utility. Without it, an arm at ")
     g.add_argument("--attack", default="algen",
                    choices=["algen", "steer", "teia", "zero2text"],
-                   help="which threat model runs the treatment and ceiling arms. "
-                        "'steer' fits the map on CLEAN pairs and never adapts to the "
-                        "defense (arXiv:2507.18518 3.1); 'algen' refits through it; "
-                        "'teia' is the no-query-access attacker with its own decoder "
-                        "-- pass its run dir with --checkpoint; 'zero2text' is the "
-                        "training-free attacker that MANUFACTURES its pairs by "
-                        "querying the victim (arXiv:2602.01757) -- it uses ALGEN's G, "
-                        "so give it its own --ladder-out or it will read ALGEN's "
-                        "cached ceiling as its own.")
+                   help="which threat model runs the treatment and ceiling arms. ")
     g.add_argument("--defense-scope", default="targets", choices=["targets", "both"],
                    help="steer only: where the defense is applied. 'targets' is "
                         "STEER's model; 'both' reproduces ALGEN's.")
     g.add_argument("--min-headroom", type=float, default=None,
-                   help="OVERRIDE the headroom gate, on the 0-1 metric scale (BLEU is "
-                        "scaled by 100 automatically). Default: the spec's ~10 points, "
-                        "i.e. 0.10. Lowering it is a PROTOCOL CHANGE -- below the "
-                        "default, ceiling-floor approaches the seed-to-seed noise and "
-                        "leak_norm becomes a ratio of two uncertain quantities. Justify "
-                        "any value against the measured per-seed spread and report it "
-                        "next to every number it gated")
+                   help="OVERRIDE the headroom gate, on the 0-1 metric scale")
     g.add_argument("--ladder-out", default="metrics/outputs",
                    help="where cached arms and the ladder JSON are written")
     g.add_argument("--algen-cell-maps", action="store_true",
-                   help="algen + --partition only: fit one ridge map PER CELL on the "
-                        "leaked pairs stored there, and decode each target through its "
-                        "own cell's map -- the partition-adaptive attacker. Its arms "
-                        "reuse the global-map arm names, so it needs its own "
-                        "--ladder-out (refused otherwise)")
+                   help="algen + --partition only: fit one ridge map PER CELL on the ")
     g.add_argument("--algen-cell-min-pairs", type=int, default=1,
-                   help="with --algen-cell-maps: fewest pairs a cell needs for its own "
-                        "map; targets in thinner cells fall back to the global map")
+                   help="with --algen-cell-maps: fewest pairs a cell needs for its own ")
     from attacker.zero2text.cli import add_attack_args as _add_z2t_args
 
     _add_z2t_args(p)

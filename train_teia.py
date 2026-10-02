@@ -71,53 +71,37 @@ def build_parser() -> argparse.ArgumentParser:
 
     g = p.add_argument_group("stage 2 — TEIA training (arXiv:2406.10280 §3)")
     g.add_argument("--decoder-name", default="microsoft/DialoGPT-small",
-                   help="the causal LM that decodes a victim vector. Upstream's "
-                        "base_config.py default; 'gpt2' suits document corpora better "
-                        "and is what configs/teia_nfcorpus.yaml uses")
+                   help="the causal LM that decodes a victim vector.")
     g.add_argument("--surrogate-model", default="gte-base",
-                   help="the frozen off-the-shelf encoder behind the adapter. §6.3 "
-                        "finds the attack insensitive to this choice — the adapter "
-                        "does the fitting — but it must not be the victim encoder")
+                   help="the frozen off-the-shelf encoder behind the adapter.")
     g.add_argument("--external-dataset", default="beir/trec-covid",
-                   help="corpus D_S is drawn from. §5.2: out-of-domain costs only "
-                        "3-15% of embedding similarity, so this need not match")
+                   help="corpus D_S is drawn from.")
     g.add_argument("--leaked-samples", type=int, default=2000,
-                   help="|D_L|, the leaked (text, vector) pairs. The paper's default "
-                        "is 8000 and its Figure 2 sweeps 500-16000; the stealing rate "
-                        "reaches ~50% at 2000 and ~70% at 8000")
+                   help="|D_L|, the leaked (text, vector) pairs.")
     g.add_argument("--external-samples", type=int, default=20000,
-                   help="|D_S|, the external texts. Upstream uses 50000")
+                   help="|D_S|, the external texts.")
     g.add_argument("--teia-val-samples", type=int, default=200,
                    help="held-out slice the decoder is selected on")
     g.add_argument("--teia-batch-size", type=int, default=16,
-                   help="upstream's batch size; a weighted sampler keeps D_L and D_S "
+                   help="batch size; a weighted sampler keeps D_L and D_S "
                         "at roughly half each")
     g.add_argument("--teia-epochs", type=int, default=24)
     g.add_argument("--teia-max-length", type=int, default=32,
-                   help="tokens the decoder reconstructs. Upstream uses 40; 32 is "
-                        "this repo's convention, so the ground truth every attack is "
-                        "scored against stays the same")
+                   help="tokens the decoder reconstructs.")
     g.add_argument("--mapping-lambda", type=float, default=1.0,
                    help="weight on L_adv in Eq. 7")
     g.add_argument("--pivot-lambda", type=float, default=1.0,
                    help="weight on L_intra + L_inter (Eqs. 4, 6)")
     g.add_argument("--geia", action="store_true",
-                   help="train the direct-attack baseline instead: leaked vectors "
-                        "only, no surrogate, adapter or discriminator (Li et al. 2023)")
+                   help="train the direct-attack baseline instead")
     g.add_argument("--compare-geia", action="store_true",
-                   help="train and attack both arms. This is Table 3's ablation and "
-                        "the only way to say whether the surrogate earned its keep")
+                   help="train and attack both arms")
     g.add_argument("--no-embed-similarity", action="store_true",
-                   help="skip upstream's headline metric, which loads a third "
-                        "sentence encoder (all-mpnet-base-v2) at attack time")
+                   help="skip upstream's headline metric")
 
     g = p.add_argument_group("threat model")
     g.add_argument("--defense-scope", choices=sorted(DEFENSE_SCOPES), default="both",
-                   help="'both' reads Assumption 2 literally: the leak comes out of "
-                        "the vector DB, so D_L is defended and the decoder trains on "
-                        "it — one training run per defense and per epsilon. 'targets' "
-                        "trains once on clean vectors and defends only at attack time "
-                        "(STEER's model, and far cheaper)")
+                   help="'defense")
     p.set_defaults(stages=",".join(STAGES))
     return p
 
