@@ -15,7 +15,8 @@ partitioned index with a secret rotation per cell. Headline metric:
 ## Setup
 
 ```bash
-cd k_mosaic                      # .python-version selects the pyenv env `kmosaic` (Python 3.11.13)
+cd k_mosaic                      
+# create a virtual environment with Python 3.11.13 and activate it
 pip install -r requirements.lock.txt --extra-index-url https://download.pytorch.org/whl/cu128
 ```
 
